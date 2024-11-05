@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Merger</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;  
+            font-family: 'Poppins', sans-serif;
+            background: #f9feff;
+        }
+
+        .nav {
+            background-color: #ffffff;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgb(229, 229, 229);
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+        }
+
+        .logo i {
+            color: #1371e5;
+            font-size: 1.5rem;
+        }
+
+        .logo span {
+            font-size: 1.7rem;
+            font-weight: bold;
+            color: #1371e5;
+        }
+
+        .nav_menu1 {
+            display: flex;
+            gap: 1.5rem;
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .nav_menu1 a {
+            text-decoration: none;
+            color: #333;
+            font-weight: 600;
+            padding: 0.5rem 1rem;
+            transition: color 0.3s ease, background-color 0.3s ease;
+        }
+
+        .nav_menu1 a:hover {
+            color: #ffffff;
+            background-color: #1371e5;
+            border-radius: 5px;
+        }
+
+        .right-menu {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .save-btn {
+            background: #1566e7;
+            color: white;
+            border: none;
+            padding: 0.5rem 1.5rem;
+            border-radius: 50px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .save-btn:hover {
+            background: #1254c2;
+        }
+
+        .choose-file {
+            text-align: center;
+            padding: 4rem 0;
+        }
+
+        .choose-file h2 {
+            font-size: 2rem;
+            color: #333;
+            margin-bottom: 1rem;
+        }
+
+        .choose-file p {
+            color: #666;
+            margin-bottom: 2rem;
+        }
+
+        .file-upload-area {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: #fff;
+            border: 2px dashed #ddd;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .file-upload-area:hover {
+            border-color: #1566e7;
+            transform: scale(1.05);
+        }
+
+        .file-upload-area i {
+            font-size: 2rem;
+            color: #1566e7;
+            margin-bottom: 1rem;
+        }
+
+        .file-upload-area p {
+            margin: 0;
+            color: #666;
+        }
+
+        .loading-spinner {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 50px;
+            height: 50px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #1566e7;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        #pdf-page {
+            display: none;
+            padding: 2rem;
+        }
+
+        .pdf-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 2rem;
+            padding: 2rem;
+        }
+
+        .pdf-item {
+            background: white;
+            border-radius: 10px;
+            padding: 1rem;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .pdf-icon {
+            font-size: 3rem;
+            color: #1566e7;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <nav class="nav">
+        <a href="#" class="logo">
+            <i class="fas fa-file-pdf"></i>
+            <span>fastpdf</span>
+        </a>
+        <ul class="nav_menu1">
+            <li><a href="#">Home</a></li>
+            <li><a href="#">About</a></li>
+            <li><a href="#">All Tools</a></li>
+            <li><a href="#">Help</a></li>
+        </ul>
+        <div class="right-menu">
+            <button class="save-btn">Save As PDF</button>
+        </div>
+    </nav>
+
+    <div id="loading" class="loading-spinner"></div>
+
+    <div id="input-page">
+        <div class="choose-file">
+            <h2>Convert PDF Files</h2>
+            <p>Convert and combine PDF files quickly ✨</p>
+            <div class="file-upload-area" onclick="document.getElementById('file-input').click()">
+                <i class="fas fa-plus"></i>
+                <p>Add Files</p>
+                <input type="file" id="file-input" multiple accept=".pdf" style="display: none">
+            </div>
+        </div>
+    </div>
+
+    <div id="pdf-page">
+        <div id="create-pdf" class="pdf-grid"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+    <script>
+        let pdfFiles = [];
+
+        function handleFileSelect(event) {
+            const files = event.target.files;
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('input-page').style.display = 'none';
+
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                
+                if (file.type !== 'application/pdf') {
+                    alert('Hanya file PDF yang diperbolehkan');
+                    continue;
+                }
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const fileData = {
+                        name: file.name,
+                        data: e.target.result,
+                        id: Date.now() + i
+                    };
+                    pdfFiles.push(fileData);
+                    if (i === files.length - 1) {
+                        updatePDFDisplay();
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            }
+            event.target.value = '';
+        }
+
+        function updatePDFDisplay() {
+            const container = document.getElementById('create-pdf');
+            container.innerHTML = '';
+            document.getElementById('pdf-page').style.display = 'block';
+            document.getElementById('loading').style.display = 'none';
+
+            pdfFiles.forEach((file) => {
+                const item = document.createElement('div');
+                item.className = 'pdf-item';
+                item.innerHTML = `
+                    <i class="fas fa-file-pdf pdf-icon"></i>
+                    <p title="${file.name}">${file.name}</p>
+                    <button onclick="deletePDF(${file.id})" class="delete-btn">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                `;
+                container.appendChild(item);
+            });
+
+            const addMore = document.createElement('div');
+            addMore.className = 'pdf-item add-more';
+            addMore.innerHTML = `<i class="fas fa-plus pdf-icon"></i><p>Add More</p>`;
+            addMore.onclick = () => document.getElementById('file-input').click();
+            container.appendChild(addMore);
+
+            const saveBtn = document.querySelector('.save-btn');
+            saveBtn.style.display = pdfFiles.length > 0 ? 'block' : 'none';
+        }
+
+        function deletePDF(id) {
+            pdfFiles = pdfFiles.filter(file => file.id !== id);
+            updatePDFDisplay();
+        }
+
+        async function mergePDFs() {
+            try {
+                document.getElementById('loading').style.display = 'block';
+                const mergedPdf = await PDFLib.PDFDocument.create();
+
+                for (const file of pdfFiles) {
+                    try {
+                        const pdfBytes = file.data;
+                        const pdf = await PDFLib.PDFDocument.load(pdfBytes);
+                        const pages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+                        pages.forEach(page => mergedPdf.addPage(page));
+                    } catch (fileError) {
+                        console.error('Error processing file:', file.name, fileError);
+                        alert(`Error processing ${file.name}. File skipped.`);
+                    }
+                }
+
+                if (mergedPdf.getPageCount() > 0) {
+                    const mergedPdfBytes = await mergedPdf.save();
+                    const blob = new Blob([mergedPdfBytes], { type: 'application/pdf' });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `merged_${new Date().getTime()}.pdf`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                    
+                    // Tambahkan reload halaman setelah selesai mendownload
+                    window.location.reload();
+                } else {
+                    alert('No pages available to save in merged PDF.');
+                }
+
+            } catch (error) {
+                console.error('Error merging PDFs:', error);
+                alert('Terjadi kesalahan saat menggabungkan PDF. Silakan coba lagi.');
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const fileInput = document.getElementById('file-input');
+            fileInput.addEventListener('change', handleFileSelect);
+            const saveBtn = document.querySelector('.save-btn');
+            saveBtn.addEventListener('click', mergePDFs);
+        });
+    </script>
+</body>
+</html>
